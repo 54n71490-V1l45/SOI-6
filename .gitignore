@@ -13,3 +13,6 @@ main5
 *.exe
 *.out
 a.out
+
+# CodeQL temporary files
+_codeql_detected_source_root
