@@ -1,0 +1,18 @@
+# Compiled binaries
+main1
+main2
+main3
+main4
+main5
+
+# Object files
+*.o
+*.obj
+
+# Executables
+*.exe
+*.out
+a.out
+
+# CodeQL temporary files
+_codeql_detected_source_root
