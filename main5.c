@@ -15,9 +15,7 @@ Autores: Adriana Sánchez-Bravo Cuesta y Santiago Vilas Pampín
 
 
 void manejador(int sig){
-    if(sig == SIGUSR1){
-        printf("hola1");
-    }
+    printf("hola1");
 }
                                                                                                                         
 void convertir_letras(char *buff){ //para convertir a mayusculas
@@ -46,10 +44,9 @@ void convertir_num(char*buff){
                 for (int j=0;j<n;j++){
                     buff[i]='*';
                 }
-            }
-        else{
+        }else{
             buff[k++]= buff[i];
-        }+
+        }
     }
 }
 
@@ -108,7 +105,7 @@ int main(int argc, char *argv[]) {
 
 
     //fichero salida
-    int fich2 = open(argv[2], O_RDWR | O_CREAT | O_TRUNC, 0666);
+    fich2 = open(argv[2], O_RDWR | O_CREAT | O_TRUNC, 0666);
     if (fich2 == -1) {
         perror("Error en open fichero salida");
         free(buffer);
@@ -122,17 +119,18 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    pid_t hijo= fork();
+    int hijo= fork();
 
     if(hijo==0){
         signal(SIGUSR1, manejador);
         sleep(10);
         printf("hola");
         convertir_num(buffer);
+        exit(2);
     }else{
         convertir_letras(buffer);
         kill(hijo,SIGUSR1);
-        /*
+        
         //mapa = mremap(mapa, sb.st_size, strlen(buffer), 0);
         if (mapa == MAP_FAILED) {
             perror("Error en mremap\n");
@@ -140,8 +138,8 @@ int main(int argc, char *argv[]) {
             close(fich1);
             exit(1);
         }
-        */
-        sleep(1);
+        
+        sleep(2);
     }
 
 
