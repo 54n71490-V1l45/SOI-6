@@ -1,3 +1,7 @@
+/*
+Autores: Adriana Sánchez-Bravo Cuesta y Santiago Vilas Pampín
+*/
+
 #include <stdio.h>      //Para printf, perror
 #include <fcntl.h>      //Para open
 #include <unistd.h>     //Para close, read

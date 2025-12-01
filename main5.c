@@ -1,12 +1,17 @@
+/*
+Autores: Adriana Sánchez-Bravo Cuesta y Santiago Vilas Pampín
+*/
+
 #include <stdio.h>      //Para printf, perror
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>      //touper
+#include <ctype.h>      //toupper
 #include <fcntl.h>      //Para open
 #include <unistd.h>     //Para close, read
 #include <sys/stat.h>   //Para fstat
 #include <sys/mman.h>   //Para mmap, munmap
-
+#include <sys/wait.h>
+                                                                                                                        
 void convertir_letras(char *buff){ //para convertir a mayusculas
     int k=0;
     for (int i = 0; buff[i]; i++){
@@ -43,24 +48,30 @@ void convertir_num(char*buff){
 int main(int argc, char *argv[]) {
     if (argc != 3) {
         printf("Uso: ./programa <archivo entrada> <archivo salida>\n");
-        return 1;
+        exit(1);
     }
+
+    if (strcmp(argv[1], argv[2]) == 0) {
+        printf("Los archivos de entrada y salida deben ser diferentes.\n");
+        exit(1);
+    }
+
 
     int fich1, fich2;
     struct stat sb;
-    char *mapa, *buffer;
+    char *mapa;
     int i;
     char c;
 
-    fich1= open(argv[1], O_RDONLY);
-    if(fich1==-1){
+    fich1 = open(argv[1], O_RDONLY);
+    if(fich1 == -1){
         perror("Error en open");
-        return 1;
+        exit(1);
     }
     if (fstat(fich1, &sb) == -1) { //averigua su longitud con fstat
         perror("Error en fstat");
         close(fich1);
-        return 1;
+        exit(1);
     }
     //proyeccion de memoria
     mapa= mmap(NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fich1, 0);
@@ -76,16 +87,24 @@ int main(int argc, char *argv[]) {
     }
     char *buffer= malloc(tamaño+1);
 
-    int hijo= fork();
+    if(!buffer){
+        printf("Error al reservar memoria");
+        close(fich1);
+        exit(1);
+    }
+
+    pid_t hijo= fork();
 
     if(hijo==0){
         convertir_num(buffer);
-    }
-    else{
+    }else{
         convertir_letras(buffer);
-        waitpid(hijo);
+        wait(NULL);
 
-        mremap(mapa, sb.st_size, strlen(buffer), 0);
+
+
+        
+        mapa = mremap(mapa, sb.st_size, strlen(buffer), 0);
         if (mapa == MAP_FAILED) {
             perror("Error en mremap\n");
             free(buffer);
