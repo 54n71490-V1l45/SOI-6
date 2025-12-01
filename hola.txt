@@ -1,0 +1,20 @@
+Prueba 1: hola 2 mundo 3 prueba 4 texto 5.
+Línea1: a1 b2 c3 d4 e5 f6.
+h1o2l3a4 t5e6x7t8o9.
+Entrada 1 — salida 2 — vuelve 3 — termina 4.
+uno1 dos2 tres3 cuatro4 cinco5.
+Inicio1|Medio2|Final3
+palabra1 palabra2 palabra3 palabra4 palabra5
+123a 456b 789c 101d 112e
+fila1: item1 item2 item3 item4
+mix1mix2mix3mix4mix5
+A1B2C3D4E5F6G7
+prueba-1_prueba-2_prueba-3
+0n1o2t3e4s5
+test1 test2 test3 test4
+fila-01 fila-02 fila-03 fila-04
+uno_1_dos_2_tres_3_cuatro_4
+x1 y2 z3 x4 y5 z6
+fin1 fin2 fin3 fin4 fin5
+Última1 Línea2 Final3
+EOF 1 EOF 2 EOF 3
