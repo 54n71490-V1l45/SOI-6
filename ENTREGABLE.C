@@ -19,38 +19,6 @@ volatile int señal_recibida = 0;
 void manejador(int sig) {
     señal_recibida = 1;
 }
-                                                                                                                        
-void convertir_letras(char *buff){ //para convertir a mayusculas
-    int k=0;
-    for (int i = 0; buff[i]; i++){
-        if(isalpha((unsigned char)buff[i])){
-            buff[i] = toupper((unsigned char) buff[i]);
-        }
-        else if(isdigit((unsigned char)buff[i])){
-            int n= buff[i] - '0';
-            for (int j=0;j<n;j++){
-                buff[i]=' ';
-            }
-        }
-        else{
-            buff[k++]= buff[i];
-        }
-    }
-    buff[k]='\0';
-}
-void convertir_num(char*buff){
-    int k=0;
-    for (int i = 0; buff[i]; i++){
-        if(isdigit((unsigned char)buff[i])){
-                int n= buff[i] - '0';
-                for (int j=0;j<n;j++){
-                    buff[i]='*';
-                }
-        }else{
-            buff[k++]= buff[i];
-        }
-    }
-}
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
@@ -79,7 +47,7 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
     //proyeccion de memoria
-    mapa= mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fich1, 0);
+    mapa= (char*)mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fich1, 0);
     close(fich1); //Ya no necesitamos el descriptor
     if(mapa == MAP_FAILED){
         perror("Error en mmap\n");
@@ -97,7 +65,7 @@ int main(int argc, char *argv[]) {
     }
 
     //Buffer compartido
-    char *buffer= mmap(NULL, tam, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    char *buffer= (char*)mmap(NULL, tam, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     if(buffer == MAP_FAILED){
         perror("Error en 2º mmap\n");
         munmap(mapa,sb.st_size);
@@ -120,7 +88,7 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    char *mapa_salida= mmap(NULL, tam, PROT_READ | PROT_WRITE, MAP_SHARED, fich2, 0);
+    char *mapa_salida= (char*)mmap(NULL, tam, PROT_READ | PROT_WRITE, MAP_SHARED, fich2, 0);
     if (mapa_salida == MAP_FAILED) {
         perror("Error en mmap fichero salida\n");
         close(fich2);
@@ -129,8 +97,9 @@ int main(int argc, char *argv[]) {
 
     signal(SIGUSR1, manejador); //Se configura al señal
 
-    long mitad= sb.st_size/2;
+    
     pid_t hijo= fork();
+    long mitad= sb.st_size/2;
     if(hijo==-1){
         perror("Error en el fork");
         munmap(mapa,sb.st_size);
@@ -146,24 +115,65 @@ int main(int argc, char *argv[]) {
         }
         señal_recibida = 0; //Se resetea
 
-        //Procesar la 1º mitad
-        convertir_num(buffer);
+        //Procesa la 1º mitad
+        long j = 0; //Índice para el buffer de salida
+        for (int i = 0; i < mitad; i++) {
+            if (isdigit((unsigned char)mapa[i])) {
+                int n = mapa[i] - '0';
+                for(int k=0; k<n; k++){
+                    buffer[j+k] = '*'; //Escribe asteriscos
+                } 
+                j += n;
+            } else {
+                j++; //Salta la letra (ya la escribió el padre)
+            }
+        }
 
         while(!señal_recibida){
             pause();
         }
+
         //Procesar la 2º mitad
-        convertir_num(buffer);
+        j = 0;
+        for (int i = 0; i < sb.st_size; i++) {
+            int avance = 1;
+            if (isdigit((unsigned char)mapa[i])) {
+                avance = mapa[i] - '0';
+                if (i >= mitad) { //Solo actuamos en la 2ª mitad
+                    for(int k=0; k<avance; k++){
+                        buffer[j+k] = '*';
+                    }
+                }
+            }
+            j += avance;
+        }
 
         exit(33);
     }else{
         //Proceso PADRE encargado de pasar a mayúsculas
         //Se procesa la 1º mitad
-        convertir_letras(buffer);
-        kill(hijo,SIGUSR1); //Avisa de que ya finalizó la primera mitad al hijo
+        long j = 0;
+        for (int i = 0; i < mitad; i++) {
+            if (isdigit((unsigned char)mapa[i])) {
+                j += mapa[i] - '0'; // Deja el hueco 
+            } else {
+                buffer[j] = toupper((unsigned char)mapa[i]); // Escribe letra
+                j++;
+            }
+        }
+
+        kill(hijo,SIGUSR1); //Se avisa de que ya finalizó la primera mitad al hijo
         
         //Se procesa la 2º mitad
-        convertir_letras(buffer);
+        for (int i = mitad; i < sb.st_size; i++) {
+             if (isdigit((unsigned char)mapa[i])) {
+                j += (mapa[i] - '0'); // Deja el hueco
+            } else {
+                buffer[j] = toupper((unsigned char)mapa[i]);
+                j++;
+            }
+        }
+        
         kill(hijo,SIGUSR1); //Avisa de que ya finalizó la segunda mitad
     }
 
@@ -180,11 +190,10 @@ int main(int argc, char *argv[]) {
     }
 
     char resumen[50];
-    int len_resumen = sprintf(resumen, "\nTotal asteriscos: %d\n", asteriscos);
+    sprintf(resumen, "\nTotal asteriscos: %d\n", asteriscos);
     
     lseek(fich2, 0, SEEK_END); //Ir al final del archivo
-    write(fich2, resumen, len_resumen);
-
+    write(fich2, resumen, strlen(resumen));
 
     //Limpieza
     munmap(mapa, sb.st_size);
