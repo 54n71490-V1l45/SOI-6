@@ -10,6 +10,7 @@ Autores: Adriana Sánchez-Bravo Cuesta y Santiago Vilas Pampín
 #include <unistd.h>     //Para close, read
 #include <sys/stat.h>   //Para fstat
 #include <sys/mman.h>   //Para mmap, munmap
+#include <sys/types.h> 
 #include <sys/wait.h>
 #include <signal.h>
 
@@ -65,7 +66,7 @@ int main(int argc, char *argv[]) {
     }
 
     //Buffer compartido
-    char *buffer= (char*)mmap(NULL, tam, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    char *buffer= (char*)mmap(NULL, tam, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0); //MAP_ANONYMOUS permite que no haya que crear otro archivo y mapearlo
     if(buffer == MAP_FAILED){
         perror("Error en 2º mmap\n");
         munmap(mapa,sb.st_size);
@@ -196,7 +197,9 @@ int main(int argc, char *argv[]) {
     sprintf(resumen, "\nTotal asteriscos: %d\n", asteriscos);
     
     lseek(fich2, 0, SEEK_END); //Ir al final del archivo
-    write(fich2, resumen, strlen(resumen));
+    if(write(fich2, resumen, strlen(resumen))==-1){ //Falle o no se tiene que hacer la limpieza el exit así que solo se imprime un mensaje
+        perror("Error escribiendo resumen");
+    }
 
     //Limpieza
     munmap(mapa, sb.st_size);
