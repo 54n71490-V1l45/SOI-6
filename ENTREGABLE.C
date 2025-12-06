@@ -129,23 +129,22 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        while(!señal_recibida){
+        kill(getppid(), SIGUSR1); //Avisa al proceso padre para que continue
+        while(!señal_recibida){ //Espera hasta que el proceso padre mande la señal que indica que ya finalizó con la segunda parte
             pause();
         }
 
         //Procesar la 2º mitad
-        j = 0;
-        for (int i = 0; i < sb.st_size; i++) {
-            int avance = 1;
+        for (int i = mitad; i < sb.st_size; i++) {
             if (isdigit((unsigned char)mapa[i])) {
-                avance = mapa[i] - '0';
-                if (i >= mitad) { //Solo actuamos en la 2ª mitad
-                    for(int k=0; k<avance; k++){
-                        buffer[j+k] = '*';
-                    }
-                }
+                int n = mapa[i] - '0';
+                for(int k=0; k<n; k++){
+                    buffer[j+k] = '*';
+                } 
+                j += n;
+            } else {
+                j++; 
             }
-            j += avance;
         }
 
         exit(33);
@@ -163,7 +162,11 @@ int main(int argc, char *argv[]) {
         }
 
         kill(hijo,SIGUSR1); //Se avisa de que ya finalizó la primera mitad al hijo
-        
+        //El padre se bloquea aquí hasta que el hijo le haga mande la señal para que pueda continuar
+        while(!señal_recibida){
+            pause();
+        }
+
         //Se procesa la 2º mitad
         for (int i = mitad; i < sb.st_size; i++) {
              if (isdigit((unsigned char)mapa[i])) {
