@@ -17,6 +17,7 @@ Autores: Adriana Sánchez-Bravo Cuesta y Santiago Vilas Pampín
 //Variable global para sincronización simple
 volatile int señal_recibida = 0;
 
+//Manejador de señal SIGUSR1
 void manejador(int sig) {
     señal_recibida = 1;
 }
@@ -42,12 +43,13 @@ int main(int argc, char *argv[]) {
         perror("Error en open del archivo de entrada");
         exit(1);
     }
-    if (fstat(fich1, &sb) == -1) { //averigua su longitud con fstat
+    if (fstat(fich1, &sb) == -1) { //Se averigua su longitud con fstat
         perror("Error en la función fstat()");
         close(fich1);
         exit(1);
     }
-    //proyeccion de memoria
+
+    //Proyección de memoria
     mapa= (char*)mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fich1, 0);
     close(fich1); //Ya no necesitamos el descriptor
     if(mapa == MAP_FAILED){
@@ -55,7 +57,7 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    //Calcular tamaño final
+    //Se calcula el tamaño final del buffer: cada dígito 'n' contribuye 'n' asteriscos, otros caracteres contribuyen 1
     long tam = 0;
     for (int i = 0; i < sb.st_size; i++) {
         if (isdigit((unsigned char)mapa[i])) {
@@ -65,7 +67,8 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    //Buffer compartido
+
+    //Se crea un buffer compartido en memoria anónima para que padre e hijo puedan accederlo
     char *buffer= (char*)mmap(NULL, tam, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0); //MAP_ANONYMOUS permite que no haya que crear otro archivo y mapearlo
     if(buffer == MAP_FAILED){
         perror("Error en 2º mmap\n");
@@ -96,9 +99,10 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    signal(SIGUSR1, manejador); //Se configura al señal
+    signal(SIGUSR1, manejador); //Se configura la señal
 
-    
+    //Se crea un proceso hijo, el Padre: maneja letras mayúsculas y el Hijo: maneja asteriscos
+    //Sincronización con señales SIGUSR1.
     pid_t hijo= fork();
     long mitad= sb.st_size/2;
     if(hijo==-1){
@@ -111,6 +115,7 @@ int main(int argc, char *argv[]) {
 
     if(hijo==0){
         //Proceso HIJO encargado de los asteriscos
+        //Se espera señal del padre para procesar la primera mitad (asteriscos donde había dígitos).
         while(!señal_recibida){
             pause();
         }
@@ -135,7 +140,7 @@ int main(int argc, char *argv[]) {
             pause();
         }
 
-        //Procesar la 2º mitad
+        //Se procesa la segunda mitad
         for (int i = mitad; i < sb.st_size; i++) {
             if (isdigit((unsigned char)mapa[i])) {
                 int n = mapa[i] - '0';
@@ -151,13 +156,13 @@ int main(int argc, char *argv[]) {
         exit(33);
     }else{
         //Proceso PADRE encargado de pasar a mayúsculas
-        //Se procesa la 1º mitad
+        //Se procesa la primera mitad
         long j = 0;
         for (int i = 0; i < mitad; i++) {
             if (isdigit((unsigned char)mapa[i])) {
-                j += mapa[i] - '0'; // Deja el hueco 
+                j += mapa[i] - '0'; //Deja el hueco 
             } else {
-                buffer[j] = toupper((unsigned char)mapa[i]); // Escribe letra
+                buffer[j] = toupper((unsigned char)mapa[i]); //Escribe letra
                 j++;
             }
         }
@@ -168,10 +173,10 @@ int main(int argc, char *argv[]) {
             pause();
         }
 
-        //Se procesa la 2º mitad
+        //Se procesa la segunda mitad
         for (int i = mitad; i < sb.st_size; i++) {
              if (isdigit((unsigned char)mapa[i])) {
-                j += (mapa[i] - '0'); // Deja el hueco
+                j += (mapa[i] - '0'); //Deja el hueco
             } else {
                 buffer[j] = toupper((unsigned char)mapa[i]);
                 j++;
@@ -197,7 +202,7 @@ int main(int argc, char *argv[]) {
     sprintf(resumen, "\nTotal asteriscos: %d\n", asteriscos);
     
     lseek(fich2, 0, SEEK_END); //Ir al final del archivo
-    if(write(fich2, resumen, strlen(resumen))==-1){ //Falle o no se tiene que hacer la limpieza el exit así que solo se imprime un mensaje
+    if(write(fich2, resumen, strlen(resumen))==-1){ //Falle o no se tiene que hacer la limpieza el exit así que solo se imprime un mensaje informativo
         perror("Error escribiendo resumen");
     }
 
